@@ -1,0 +1,650 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Smart Tryout UKMPPD - Interactive Review</title>
+    <style>
+        * { box-sizing: border-box; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+        body { background-color: #f3f4f6; margin: 0; padding: 0; min-height: 100vh; display: flex; flex-direction: column; color: #1f2937; }
+        header { background: white; padding: 15px 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); display: flex; justify-content: space-between; align-items: center; }
+        .logo { font-size: 1.2rem; font-weight: bold; color: #1e3a8a; }
+        .header-buttons { display: flex; gap: 10px; align-items: center; }
+        .timer-badge { background: #fef2f2; color: #dc2626; border: 1px solid #fca5a5; padding: 6px 15px; font-weight: bold; display: none; border-radius: 20px; font-family: monospace; }
+        main { max-width: 1000px; width: 100%; margin: 30px auto; padding: 0 15px; flex-grow: 1; }
+        .card { background: white; padding: 30px; border-radius: 16px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); border: 1px solid #e5e7eb; }
+        .btn { background: #2563eb; color: white; border: none; padding: 12px 24px; font-size: 1rem; font-weight: 600; border-radius: 10px; cursor: pointer; width: 100%; transition: 0.2s; text-align: center;}
+        .btn:hover { background: #1d4ed8; }
+        .btn:disabled { background: #cbd5e1; color: #94a3b8; cursor: not-allowed; }
+        .btn-admin-nav { background: #4b5563; font-size: 0.85rem; padding: 8px 16px; width: auto; }
+        .btn-admin-nav:hover { background: #374151; }
+        .hidden { display: none !important; }
+        
+        /* Layout Grid 2 Kolom untuk Kuis dan Review */
+        .grid-layout { display: grid; grid-template-columns: 3fr 1fr; gap: 20px; }
+        @media (max-width: 768px) { .grid-layout { grid-template-columns: 1fr; } }
+        
+        /* Layout Admin split 2 kolom */
+        .admin-split-layout { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; align-items: start; }
+        @media (max-width: 850px) { .admin-split-layout { grid-template-columns: 1fr; } }
+        
+        .filter-container { display: grid; grid-template-columns: 2fr 1fr; gap: 12px; margin-bottom: 15px; }
+        @media (max-width: 480px) { .filter-container { grid-template-columns: 1fr; } }
+        .select-main { padding: 12px; border: 2px solid #2563eb; border-radius: 8px; font-size: 0.95rem; width: 100%; font-weight: 600; color: #1e3a8a; background-color: #f8fafc; }
+        
+        /* Form Admin Styling */
+        .form-group { margin-bottom: 15px; display: flex; flex-direction: column; gap: 5px; text-align: left; }
+        .form-group label { font-size: 0.9rem; font-weight: 600; color: #374151; }
+        .form-group textarea { padding: 12px; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 0.9rem; width: 100%; resize: vertical; min-height: 380px; font-family: monospace; line-height: 1.5; }
+        .format-hint { background: #f8fafc; border: 1px dashed #cbd5e1; padding: 12px; border-radius: 8px; font-size: 0.75rem; color: #4b5563; text-align: left; margin-bottom: 15px; }
+        
+        /* Live Preview Container */
+        .preview-box-container { border: 1px solid #cbd5e1; border-radius: 8px; background: #fafafa; padding: 15px; min-height: 380px; max-height: 500px; overflow-y: auto; text-align: left; }
+        .preview-item { background: white; border: 1px solid #e5e7eb; padding: 15px; border-radius: 10px; margin-bottom: 15px; box-shadow: 0 2px 4px rgba(0,0,0,0.02); }
+        
+        /* Opsi Jawaban Kuis */
+        .opsi-container { display: flex; flex-direction: column; gap: 12px; margin-top: 20px; }
+        .opsi-item { border: 1px solid #e5e7eb; padding: 14px; border-radius: 10px; cursor: pointer; display: flex; items-center; font-weight: 500; text-align: left; }
+        .opsi-item:hover { background: #f8fafc; border-color: #cbd5e1; }
+        .opsi-item input { margin-right: 12px; transform: scale(1.2); }
+        .btn-flex { display: flex; justify-content: space-between; margin-top: 20px; gap: 15px; }
+        .btn-secondary { background: #e5e7eb; color: #374151; width: auto; }
+        .btn-secondary:hover { background: #d1d5db; }
+        .btn-next-action { background: #2563eb; width: auto; }
+        .btn-finish { background: #059669; }
+        .btn-finish:hover { background: #047857; }
+        
+        /* Grid Navigasi Nomor */
+        .nav-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+        .nav-btn { background: #f3f4f6; border: 1px solid #e5e7eb; height: 40px; font-weight: bold; border-radius: 8px; cursor: pointer; }
+        .nav-btn.terisi { background: #2563eb; color: white; border-color: #2563eb; }
+        .nav-btn.aktif { border: 3px solid #1e3a8a; }
+        
+        /* Navigasi Khusus Halaman Review (Hasil) */
+        .nav-btn.review-benar { background: #10b981; color: white; border-color: #10b981; }
+        .nav-btn.review-salah { background: #ef4444; color: white; border-color: #ef4444; }
+        .nav-btn.review-aktif { border: 3px solid #000000; ring: 2px solid black; }
+        
+        /* Badges & Tags */
+        .badge-status { display: inline-block; padding: 4px 12px; font-size: 0.75rem; font-weight: bold; border-radius: 50px; }
+        .badge-benar { background: #d1fae5; color: #065f46; }
+        .badge-salah { background: #fee2e2; color: #991b1b; }
+        .tag-stase { display: inline-block; background: #eff6ff; color: #1e40af; border: 1px solid #bfdbfe; font-size: 0.7rem; padding: 2px 6px; border-radius: 4px; font-weight: 600; text-transform: uppercase; }
+        .tag-paket { display: inline-block; background: #fef3c7; color: #92400e; border: 1px solid #fde68a; font-size: 0.7rem; padding: 2px 6px; border-radius: 4px; font-weight: 600; margin-left: 3px; }
+        .tag-sub { display: inline-block; background: #f3f4f6; color: #4b5563; border: 1px solid #e5e7eb; font-size: 0.7rem; padding: 2px 6px; border-radius: 4px; font-weight: 500; margin-left: 3px; }
+        
+        /* Tampilan Kotak Informasi Hasil */
+        .info-box-review { border: 1px solid #e5e7eb; padding: 12px; border-radius: 8px; font-size: 0.85rem; margin-bottom: 10px; text-align: left; }
+        
+        .pembahasan-box { background: #eff6ff; border-left: 4px solid #3b82f6; padding: 15px; margin-top: 15px; border-radius: 4px; font-size: 0.9rem; text-align: left; }
+        .rekap-table { width: 100%; border-collapse: collapse; margin-top: 15px; text-align: left; font-size: 0.9rem; }
+        .rekap-table th, .rekap-table td { padding: 12px; border-bottom: 1px solid #e5e7eb; }
+        .rekap-table th { background-color: #f8fafc; color: #4b5563; }
+    </style>
+</head>
+<body>
+
+    <header>
+        <div class="logo" style="cursor: pointer;" onclick="window.location.reload()">🚀 SMART TRYOUT UKMPPD</div>
+        <div class="header-buttons">
+            <button id="btn-goto-admin" class="btn btn-admin-nav">⚙️ Menu Input Soal</button>
+            <div id="timer-container" class="timer-badge">⏱️ <span id="timer">00:00</span></div>
+        </div>
+    </header>
+
+    <main>
+        <div id="start-screen" class="card" style="text-align: center; max-width: 550px; margin: 0 auto;">
+            <div style="font-size: 3rem; margin-bottom: 10px;">📝</div>
+            <h2>Simulasi Ujian UKMPPD</h2>
+            <p style="color: #6b7280; margin-bottom: 20px; font-size: 0.9rem;">Tentukan kombinasi Stase dan Paket Soal untuk memulai:</p>
+            
+            <div class="filter-container">
+                <div style="text-align: left;">
+                    <label style="font-size: 0.8rem; font-weight: bold; color: #4b5563; display: block; margin-bottom: 4px;">Pilih Stase Klinis:</label>
+                    <select id="select-stase-filter" class="select-main" onchange="hitungKetersediaanSoal()">
+                        <option value="SEMUA">🌐 Campuran (Semua Stase)</option>
+                        <option value="BEDAH">BEDAH</option>
+                        <option value="ENDOKRIN">ENDOKRIN</option>
+                        <option value="HEMATO INFEKSI">HEMATO INFEKSI</option>
+                        <option value="FORENSIK">FORENSIK</option>
+                        <option value="IKM-SKN">IKM-SKN</option>
+                        <option value="INTEGUMEN">INTEGUMEN</option>
+                        <option value="KARDIOLOGI">KARDIOLOGI</option>
+                        <option value="MATA">MATA</option>
+                        <option value="MUSKULOSKELETAL">MUSKULOSKELETAL</option>
+                        <option value="NEFROLOGI">NEFROLOGI</option>
+                        <option value="NEUROLOGI">NEUROLOGI</option>
+                        <option value="OBGYN">OBGYN</option>
+                        <option value="PEDIATRI">PEDIATRI</option>
+                        <option value="PULMO">PULMO</option>
+                        <option value="THT">THT</option>
+                    </select>
+                </div>
+                <div style="text-align: left;">
+                    <label style="font-size: 0.8rem; font-weight: bold; color: #4b5563; display: block; margin-bottom: 4px;">Paket Soal:</label>
+                    <select id="select-paket-filter" class="select-main" onchange="hitungKetersediaanSoal()">
+                        <option value="SEMUA">Semua Paket</option>
+                        <option value="1">Paket 1</option>
+                        <option value="2">Paket 2</option>
+                        <option value="3">Paket 3</option>
+                        <option value="4">Paket 4</option>
+                        <option value="5">Paket 5</option>
+                        <option value="6">Paket 6</option>
+                        <option value="7">Paket 7</option>
+                        <option value="8">Paket 8</option>
+                        <option value="9">Paket 9</option>
+                        <option value="10">Paket 10</option>
+                    </select>
+                </div>
+            </div>
+
+            <p style="font-weight: bold; font-size: 0.9rem; margin-bottom: 25px;" id="total-soal-info">Loading soal...</p>
+            <button id="btn-start" class="btn">Mulai Ujian</button>
+        </div>
+
+        <div id="admin-screen" class="card hidden" style="max-width: 1000px; margin: 0 auto;">
+            <h3 style="margin-top:0; border-bottom: 1px solid #e5e7eb; padding-bottom: 10px;">⚡ Bulk Input Soal & Live Preview Analyzer</h3>
+            <div class="admin-split-layout">
+                <div>
+                    <div class="format-hint">
+                        <strong>Format Penanda wajib:</strong> <code>STASE:</code>, <code>PAKET:</code>, <code>SUB:</code>, <code>SOAL:</code>, <code>A.</code>, <code>B.</code>, <code>C.</code>, <code>D.</code>, <code>KUNCI:</code>, <code>PEMBAHASAN:</code>
+                    </div>
+                    <form id="form-tambah-soal" onsubmit="prosesBulkInputSoal(event)">
+                        <div class="form-group">
+                            <label>Ketik / Tempel Kumpulan Soal Di Sini:</label>
+                            <textarea id="in-raw-text" placeholder="Ketik atau paste soal di sini..." oninput="jalankanLivePreview()" required></textarea>
+                        </div>
+                        <div class="btn-flex">
+                            <button type="button" onclick="kembaliKeUtama()" class="btn btn-secondary" style="width: 45%;">Batal</button>
+                            <button type="submit" class="btn btn-finish" style="width: 55%;">Simpan Semua Soal</button>
+                        </div>
+                    </form>
+                    <button onclick="resetKeDefault()" class="btn" style="background:#dc2626; padding: 8px; font-size: 0.8rem; width: auto; margin-top: 20px;">Hapus Semua Soal Custom</button>
+                </div>
+                <div>
+                    <label style="font-size: 0.9rem; font-weight: 600; color: #374151; display: block; margin-bottom: 5px; text-align: left;">👀 Live Preview Parser (<span id="preview-count-label">0</span> Soal Terdeteksi):</label>
+                    <div id="live-preview-box" class="preview-box-container">
+                        <p style="color:#9ca3af; text-align:center; margin-top:100px; font-size:0.9rem;">Belum ada teks. Ketik sesuatu di kolom kiri...</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="quiz-screen" class="hidden grid-layout">
+            <div class="card">
+                <div style="display: flex; justify-content: space-between; border-bottom: 1px solid #e5e7eb; padding-bottom: 10px; font-size: 0.85rem; font-weight: bold; color: #2563eb;">
+                    <div>
+                        <span id="question-number-title">Soal 1</span>
+                        <span id="question-tags"></span>
+                    </div>
+                    <span id="question-count" style="color: #6b7280;">1 dari 3</span>
+                </div>
+                <h3 id="question-text" style="line-height: 1.6; margin-top: 20px; text-align: left; font-weight: 500; white-space: pre-wrap;">Memuat soal...</h3>
+                <div id="options-container" class="opsi-container"></div>
+                <div class="btn-flex">
+                    <button id="btn-prev" class="btn btn-secondary">Kembali</button>
+                    <button id="btn-next" class="btn btn-next-action">Selanjutnya</button>
+                </div>
+            </div>
+            <div class="card" style="padding: 20px;">
+                <h4 style="margin-top:0; text-align:center; text-transform: uppercase; font-size: 0.8rem; color:#4b5563;">Navigasi Soal</h4>
+                <div id="nav-grid" class="nav-grid"></div>
+                <button id="btn-submit" class="btn btn-finish" style="margin-top: 20px; padding: 10px;">Selesai</button>
+            </div>
+        </div>
+
+        <div id="result-screen" class="hidden" style="display: flex; flex-direction: column; gap: 25px;">
+            <div class="card" style="text-align: center; max-width: 500px; margin: 0 auto; width:100%;">
+                <h2>Hasil Try Out Anda</h2>
+                <p id="result-stase-info" style="font-weight: bold; color: #1e40af; margin-top:-5px; font-size:0.95rem; text-transform: uppercase;">Stase: -</p>
+                <p id="result-time-info" style="font-size:0.8rem; color:#9ca3af; margin-top: 2px;">Waktu pengerjaan: --</p>
+                <div style="background: #eff6ff; width: 110px; height: 110px; border-radius: 50%; display: flex; flex-direction: column; justify-content: center; align-items: center; margin: 15px auto; border: 4px solid #bfdbfe;">
+                    <span id="score-text" style="font-size: 2rem; font-weight: bold; color: #2563eb;">0</span>
+                    <span style="font-size: 0.6rem; font-weight: bold; color: #9ca3af;">Skor Akhir</span>
+                </div>
+                <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 15px;">
+                    <div style="background:#d1fae5; color:#065f46; padding: 8px; border-radius: 8px; font-size:0.9rem;">Benar: <span id="stats-correct">0</span></div>
+                    <div style="background:#fee2e2; color:#991b1b; padding: 8px; border-radius: 8px; font-size:0.9rem;">Salah: <span id="stats-wrong">0</span></div>
+                </div>
+                <button onclick="window.location.reload()" class="btn" style="background:#374151; padding: 10px;">Ulangi Ujian</button>
+            </div>
+
+            <div class="card">
+                <h3 style="margin-top: 0; color:#1e3a8a;">📊 Rekapitulasi Kemampuan Per Sub-Materi</h3>
+                <table class="rekap-table">
+                    <thead>
+                        <tr>
+                            <th>Stase Klinis</th>
+                            <th>Sub-Materi / Topik</th>
+                            <th style="color: #065f46;">Benar</th>
+                            <th style="color: #b91c1c;">Salah/Kosong</th>
+                            <th>Akurasi</th>
+                        </tr>
+                    </thead>
+                    <tbody id="submateri-rekap-body"></tbody>
+                </table>
+            </div>
+
+            <div class="card">
+                <h3 style="margin-top: 0; border-bottom: 1px solid #e5e7eb; padding-bottom: 10px; text-align: left;">🔍 Review Pembahasan Per Nomor Soal</h3>
+                
+                <div class="grid-layout" style="margin-top: 20px;">
+                    <div style="background: #f8fafc; border: 1px solid #e5e7eb; padding: 20px; border-radius: 12px;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #e5e7eb; padding-bottom: 8px; margin-bottom: 15px;">
+                            <div>
+                                <span id="review-question-number" style="font-weight: bold; font-size: 1.05rem;">Soal Nomor 1</span>
+                                <div id="review-question-tags" style="margin-top: 4px;"></div>
+                            </div>
+                            <div id="review-status-badge"></div>
+                        </div>
+                        
+                        <p id="review-question-text" style="line-height: 1.6; font-weight: 500; text-align: left; white-space: pre-wrap; margin-bottom: 20px;">Teks soal...</p>
+                        
+                        <div class="info-box-review" style="background: #fff;">
+                            <p style="margin: 4px 0; color:#4b5563;">👉 Jawaban Anda: <span id="review-user-answer" style="font-weight: bold;">-</span></p>
+                            <p style="margin: 4px 0; color:#059669;">🎯 Kunci Jawaban: <span id="review-correct-answer" style="font-weight: bold;">-</span></p>
+                        </div>
+                        
+                        <div id="review-pembahasan-box" class="pembahasan-box">
+                            <b>📖 Pembahasan Kunci:</b><br>
+                            <p id="review-pembahasan-text" style="margin: 5px 0; white-space: pre-wrap;"></p>
+                        </div>
+                    </div>
+
+                    <div style="text-align: center;">
+                        <h4 style="margin-top: 0; margin-bottom: 10px; font-size: 0.8rem; color:#6b7280; text-transform: uppercase;">Daftar Soal</h4>
+                        <div id="review-nav-grid" class="nav-grid">
+                            </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <footer style="text-align: center; padding: 20px; color: #9ca3af; font-size: 0.8rem; background: white; margin-top: auto; border-top: 1px solid #e5e7eb;">
+        &copy; 2026 Smart Tryout App - UKMPPD Engine.
+    </footer>
+
+    <script>
+        const soalDefault = [
+            {
+                stase: "BEDAH", paket: 1, submateri: "Urologi Obstruktif",
+                pertanyaan: "Manakah organ tubuh manusia yang berfungsi utama untuk menyaring darah dari zat sisa metabolisme?",
+                pilihan: ["A. Jantung", "B. Paru-paru", "C. Ginjal", "D. Hati"], jawabanBenar: 2,
+                pembahasan: "Ginjal berfungsi menyaring darah, membuang limbah metabolik, serta mengatur keseimbangan cairan tubuh."
+            },
+            {
+                stase: "KARDIOLOGI", paket: 1, submateri: "Sindrom Koroner Akut",
+                pertanyaan: "Seorang pasien datang dengan keluhan nyeri dada kiri menjalar ke lengan kiri. Pada pemeriksaan EKG ditemukan ST Elevasi di lead II, III, aVF. Manakah diagnosis yang tepat?",
+                pilihan: ["A. STEMI Anteroseptal", "B. STEMI Inferior", "C. LBBB Baru", "D. Angina Pektoris Stabil"], jawabanBenar: 1,
+                pembahasan: "ST elevasi pada lead II, III, dan aVF menunjukkan adanya infark miokard akut dinding inferior."
+            }
+        ];
+
+        let masterBankSoal = JSON.parse(localStorage.getItem('ukmppd_bank_soal')) || soalDefault;
+        let bankSoalAktif = []; 
+
+        let waktuTersisa = 0; let totalWaktu = 0; let intervalTimer = null;
+        let indeksSoalSekarang = 0; let jawabanUser = [];
+        let indeksReviewSekarang = 0; // State baru untuk melacak nomor berapa yang sedang dibedah pasca kuis
+
+        const screenStart = document.getElementById('start-screen');
+        const screenAdmin = document.getElementById('admin-screen');
+        const screenQuiz = document.getElementById('quiz-screen');
+        const screenResult = document.getElementById('result-screen');
+        const timerContainer = document.getElementById('timer-container');
+        const timerEl = document.getElementById('timer');
+        const btnGotoAdmin = document.getElementById('btn-goto-admin');
+        const selectStaseFilter = document.getElementById('select-stase-filter');
+        const selectPaketFilter = document.getElementById('select-paket-filter');
+        const btnStart = document.getElementById('btn-start');
+        const totalSoalInfo = document.getElementById('total-soal-info');
+
+        function hitungKetersediaanSoal() {
+            const staseTerpilih = selectStaseFilter.value;
+            const paketTerpilih = selectPaketFilter.value;
+            
+            bankSoalAktif = masterBankSoal.filter(soal => {
+                const matchStase = (staseTerpilih === "SEMUA" || soal.stase.trim().toUpperCase() === staseTerpilih.toUpperCase());
+                const matchPaket = (paketTerpilih === "SEMUA" || parseInt(soal.paket) === parseInt(paketTerpilih));
+                return matchStase && matchPaket;
+            });
+
+            if (bankSoalAktif.length > 0) {
+                totalSoalInfo.innerHTML = `🟢 Terbaca: <span style="color:#2563eb; font-size:1.05rem;">${bankSoalAktif.length} Soal</span> siap dikerjakan pada sesi ini.`;
+                btnStart.disabled = false;
+            } else {
+                totalSoalInfo.innerHTML = `❌ <span style="color:#dc2626">0 Soal tersedia</span>. Belum ada input soal untuk kombinasi filter ini.`;
+                btnStart.disabled = true;
+            }
+        }
+        hitungKetersediaanSoal();
+
+        btnGotoAdmin.addEventListener('click', () => {
+            screenStart.classList.add('hidden'); screenQuiz.classList.add('hidden'); screenResult.classList.add('hidden');
+            screenAdmin.classList.remove('hidden'); btnGotoAdmin.classList.add('hidden');
+            jalankanLivePreview();
+        });
+
+        function kembaliKeUtama() {
+            screenAdmin.classList.add('hidden'); screenStart.classList.remove('hidden'); btnGotoAdmin.classList.remove('hidden');
+            hitungKetersediaanSoal();
+        }
+
+        // PARSER CORE ENGINE
+        function parseTeksMenjadiObjek(rawText) {
+            const blokSoalRaw = rawText.split(/(?=STASE:)/i);
+            let hasilArrayObjek = [];
+
+            blokSoalRaw.forEach(blok => {
+                if (!blok.trim()) return;
+
+                let stase = "UMUM"; let paketNo = 1; let submateri = "Lain-lain";
+                let pertanyaan = ""; let opsiA = "", opsiB = "", opsiC = "", opsiD = "", opsiE = "";
+                let kunciHuruf = "A"; let pembahasan = "Tidak ada pembahasan.";
+
+                const lines = blok.split('\n');
+                let captureSoalMode = false; let capturePembahasanMode = false;
+                let soalBuffer = []; let pembahasanBuffer = [];
+
+                lines.forEach(line => {
+                    let trimmed = line.trim();
+                    if (!trimmed) return;
+
+                    if (trimmed.toUpperCase().startsWith("STASE:")) {
+                        stase = line.replace(/stase:/i, "").trim().toUpperCase();
+                        captureSoalMode = false; capturePembahasanMode = false;
+                    } else if (trimmed.toUpperCase().startsWith("PAKET:")) {
+                        paketNo = parseInt(line.replace(/paket:/i, "").trim()) || 1;
+                        captureSoalMode = false; capturePembahasanMode = false;
+                    } else if (trimmed.toUpperCase().startsWith("SUB:")) {
+                        submateri = line.replace(/sub:/i, "").trim();
+                        captureSoalMode = false; capturePembahasanMode = false;
+                    } else if (trimmed.toUpperCase().startsWith("SOAL:")) {
+                        soalBuffer.push(line.replace(/soal:/i, "").trim());
+                        captureSoalMode = true; capturePembahasanMode = false;
+                    } else if (trimmed.toUpperCase().startsWith("A.")) {
+                        opsiA = trimmed; captureSoalMode = false; capturePembahasanMode = false;
+                    } else if (trimmed.toUpperCase().startsWith("B.")) {
+                        opsiB = trimmed; captureSoalMode = false; capturePembahasanMode = false;
+                    } else if (trimmed.toUpperCase().startsWith("C.")) {
+                        opsiC = trimmed; captureSoalMode = false; capturePembahasanMode = false;
+                    } else if (trimmed.toUpperCase().startsWith("D.")) {
+                        opsiD = trimmed; captureSoalMode = false; capturePembahasanMode = false;
+                    } else if (trimmed.toUpperCase().startsWith("E.")) {
+                        opsiE = trimmed; captureSoalMode = false; capturePembahasanMode = false;
+                    } else if (trimmed.toUpperCase().startsWith("KUNCI:")) {
+                        kunciHuruf = line.replace(/kunci:/i, "").trim().toUpperCase();
+                        captureSoalMode = false; capturePembahasanMode = false;
+                    } else if (trimmed.toUpperCase().startsWith("PEMBAHASAN:")) {
+                        pembahasanBuffer.push(line.replace(/pembahasan:/i, "").trim());
+                        captureSoalMode = false; capturePembahasanMode = true;
+                    } else {
+                        if (captureSoalMode) soalBuffer.push(trimmed);
+                        if (capturePembahasanMode) pembahasanBuffer.push(trimmed);
+                    }
+                });
+
+                pertanyaan = soalBuffer.join("\n");
+                pembahasan = pembahasanBuffer.join("\n");
+
+                let listPilihan = [];
+                if(opsiA) listPilihan.push(opsiA); if(opsiB) listPilihan.push(opsiB); if(opsiC) listPilihan.push(opsiC);
+                if(opsiD) listPilihan.push(opsiD); if(opsiE) listPilihan.push(opsiE);
+
+                let jawabanBenarIdx = 0;
+                if (kunciHuruf.includes("B")) jawabanBenarIdx = 1;
+                else if (kunciHuruf.includes("C")) jawabanBenarIdx = 2;
+                else if (kunciHuruf.includes("D")) jawabanBenarIdx = 3;
+                else if (kunciHuruf.includes("E")) jawabanBenarIdx = 4;
+
+                if (pertanyaan && opsiA && opsiB) {
+                    hasilArrayObjek.push({
+                        stase: stase, paket: paketNo, submateri: submateri,
+                        pertanyaan: pertanyaan, pilihan: listPilihan,
+                        jawabanBenar: jawabanBenarIdx, kunciHuruf: kunciHuruf, pembahasan: pembahasan
+                    });
+                }
+            });
+            return hasilArrayObjek;
+        }
+
+        function jalankanLivePreview() {
+            const rawText = document.getElementById('in-raw-text').value;
+            const previewBox = document.getElementById('live-preview-box');
+            const previewCountLabel = document.getElementById('preview-count-label');
+
+            if (!rawText.trim()) {
+                previewBox.innerHTML = `<p style="color:#9ca3af; text-align:center; margin-top:100px; font-size:0.9rem;">Belum ada teks. Ketik sesuatu...</p>`;
+                previewCountLabel.textContent = "0"; return;
+            }
+
+            const daftarSoalTerurai = parseTeksMenjadiObjek(rawText);
+            previewCountLabel.textContent = daftarSoalTerurai.length;
+
+            if (daftarSoalTerurai.length === 0) {
+                previewBox.innerHTML = `<p style="color:#dc2626; text-align:center; margin-top:100px; font-size:0.85rem; font-weight:bold;">⚠️ Format tidak dikenali. Cek kriteria penanda teks.</p>`;
+                return;
+            }
+
+            previewBox.innerHTML = '';
+            daftarSoalTerurai.forEach((soal, index) => {
+                let opsiHtml = '';
+                soal.pilihan.forEach((opsi, i) => {
+                    let isCorrectStyle = (i === soal.jawabanBenar) ? 'color:#059669; font-weight:bold; background:#f0fdf4; padding:2px 6px; border-radius:4px;' : '';
+                    opsiHtml += `<p style="margin:4px 0; font-size:0.85rem; ${isCorrectStyle}">${opsi}</p>`;
+                });
+
+                previewBox.innerHTML += `
+                    <div class="preview-item">
+                        <div style="margin-bottom:6px;"><span class="tag-stase">📂 ${soal.stase}</span><span class="tag-paket">📦 Paket ${soal.paket}</span><span class="tag-sub">🏷️ ${soal.submateri}</span></div>
+                        <p style="font-weight:600; font-size:0.9rem; margin:5px 0; white-space: pre-wrap;">${index + 1}. ${soal.pertanyaan}</p>
+                        <div style="margin-left:10px; border-left:2px solid #e5e7eb; padding-left:8px;">${opsiHtml}</div>
+                    </div>
+                `;
+            });
+        }
+
+        function prosesBulkInputSoal(e) {
+            e.preventDefault();
+            const rawText = document.getElementById('in-raw-text').value;
+            const daftarSoalTerurai = parseTeksMenjadiObjek(rawText);
+
+            if (daftarSoalTerurai.length > 0) {
+                masterBankSoal.push(...daftarSoalTerurai);
+                localStorage.setItem('ukmppd_bank_soal', JSON.stringify(masterBankSoal));
+                alert(`🔥 Sukses menyimpan [ ${daftarSoalTerurai.length} Soal ] baru.`);
+                document.getElementById('form-tambah-soal').reset();
+                kembaliKeUtama();
+            } else {
+                alert("Gagal memproses penginputan. Periksa keselarasan format teks.");
+            }
+        }
+
+        function resetKeDefault() {
+            if(confirm("Hapus seluruh database kuis?")) {
+                localStorage.removeItem('ukmppd_bank_soal'); window.location.reload();
+            }
+        }
+
+        // PLAYING KUIS ENGINE
+        function startQuiz() {
+            screenStart.classList.add('hidden'); btnGotoAdmin.classList.add('hidden');
+            screenQuiz.classList.remove('hidden'); timerContainer.style.display = 'block';
+            totalWaktu = bankSoalAktif.length * 60; waktuTersisa = totalWaktu;
+            jawabanUser = Array(bankSoalAktif.length).fill(null); indeksSoalSekarang = 0;
+            renderSoal(); renderNavigasi(); startTimer();
+        }
+
+        function startTimer() {
+            intervalTimer = setInterval(() => {
+                if (waktuTersisa <= 0) { clearInterval(intervalTimer); finishQuiz(); } 
+                else {
+                    waktuTersisa--;
+                    let m = Math.floor(waktuTersisa / 60).toString().padStart(2, '0');
+                    let s = (waktuTersisa % 60).toString().padStart(2, '0');
+                    timerEl.textContent = `${m}:${s}`;
+                }
+            }, 1000);
+        }
+
+        function renderSoal() {
+            const soal = bankSoalAktif[indeksSoalSekarang];
+            document.getElementById('question-number-title').textContent = `Soal Nomor ${indeksSoalSekarang + 1}`;
+            document.getElementById('question-tags').innerHTML = `<span class="tag-stase">📂 ${soal.stase}</span><span class="tag-paket">📦 Paket ${soal.paket}</span><span class="tag-sub">🏷️ ${soal.submateri}</span>`;
+            document.getElementById('question-count').textContent = `${indeksSoalSekarang + 1} dari ${bankSoalAktif.length}`;
+            document.getElementById('question-text').textContent = soal.pertanyaan;
+
+            const containerOpsi = document.getElementById('options-container'); containerOpsi.innerHTML = '';
+            soal.pilihan.forEach((opsi, index) => {
+                const checked = jawabanUser[indeksSoalSekarang] === index ? 'checked' : '';
+                containerOpsi.innerHTML += `
+                    <label class="opsi-item">
+                        <input type="radio" name="jawaban" value="${index}" ${checked} onclick="simpanJawaban(${index})">
+                        ${opsi}
+                    </label>
+                `;
+            });
+            document.getElementById('btn-prev').disabled = indeksSoalSekarang === 0;
+            document.getElementById('btn-next').textContent = indeksSoalSekarang === bankSoalAktif.length - 1 ? "Selesai" : "Selanjutnya";
+        }
+
+        function renderNavigasi() {
+            const grid = document.getElementById('nav-grid'); grid.innerHTML = '';
+            bankSoalAktif.forEach((_, i) => {
+                let cls = 'nav-btn';
+                if (jawabanUser[i] !== null) cls += ' terisi';
+                if (i === indeksSoalSekarang) cls += ' aktif';
+                grid.innerHTML += `<button class="${cls}" onclick="lompat(${i})">${i + 1}</button>`;
+            });
+        }
+
+        function simpanJawaban(idx) { jawabanUser[indeksSoalSekarang] = idx; renderNavigasi(); }
+        function lompat(idx) { indeksSoalSekarang = idx; renderSoal(); renderNavigasi(); }
+
+        // ===================================================
+        // 🏁 LOGIKA TAMPILAN REVIEW INTERAKTIF PER NOMOR SOAL
+        // ===================================================
+        function finishQuiz() {
+            clearInterval(intervalTimer);
+            screenQuiz.classList.add('hidden'); timerContainer.classList.add('hidden'); screenResult.classList.remove('hidden');
+
+            let benar = 0; let rekapSubMateri = {};
+
+            bankSoalAktif.forEach((s, i) => {
+                const uniqueKey = `${s.stase} | ${s.submateri}`;
+                if (!rekapSubMateri[uniqueKey]) {
+                    rekapSubMateri[uniqueKey] = { stase: s.stase, sub: s.submateri, benar: 0, salah: 0 };
+                }
+                if (jawabanUser[i] === s.jawabanBenar) {
+                    benar++; rekapSubMateri[uniqueKey].benar++;
+                } else {
+                    rekapSubMateri[uniqueKey].salah++;
+                }
+            });
+            
+            const staseTxt = selectStaseFilter.value === "SEMUA" ? "Campuran (Semua)" : selectStaseFilter.value;
+            const paketTxt = selectPaketFilter.value === "SEMUA" ? "Semua Paket" : `Paket Soal ${selectPaketFilter.value}`;
+            document.getElementById('result-stase-info').textContent = `${staseTxt} (${paketTxt})`;
+
+            document.getElementById('score-text').textContent = Math.round((benar/bankSoalAktif.length)*100);
+            document.getElementById('stats-correct').textContent = benar;
+            document.getElementById('stats-wrong').textContent = bankSoalAktif.length - benar;
+
+            let waktuTerpakai = totalWaktu - waktuTersisa;
+            document.getElementById('result-time-info').textContent = `Waktu pengerjaan: ${Math.floor(waktuTerpakai/60)}m ${waktuTerpakai%60}s`;
+
+            // Render Tabel Capaian Sub-materi
+            const tableBody = document.getElementById('submateri-rekap-body'); tableBody.innerHTML = '';
+            for (let key in rekapSubMateri) {
+                let item = rekapSubMateri[key]; let akurasi = Math.round((item.benar / (item.benar + item.salah)) * 100);
+                tableBody.innerHTML += `
+                    <tr>
+                        <td style="font-weight:600; color:#1e40af; text-transform:uppercase;">${item.stase}</td>
+                        <td><span style="background:#f3f4f6; padding:3px 8px; border-radius:4px;">${item.sub}</span></td>
+                        <td style="color:#059669; font-weight:bold;">${item.benar}</td>
+                        <td style="color:#dc2626; font-weight:bold;">${item.salah}</td>
+                        <td style="font-weight:bold; color:${akurasi >= 70 ? '#059669' : '#d97706'}">${akurasi}%</td>
+                    </tr>
+                `;
+            }
+
+            // Pemicu pertama untuk me-render review nomor soal pertama (Indeks 0)
+            indeksReviewSekarang = 0;
+            renderPanelNavigasiReview();
+            renderDetailKontenReview();
+        }
+
+        // Render Tombol Angka Khusus di Halaman Review (Hasil Akhir)
+        function renderPanelNavigasiReview() {
+            const reviewGrid = document.getElementById('review-nav-grid');
+            reviewGrid.innerHTML = '';
+
+            bankSoalAktif.forEach((soal, i) => {
+                const statusBenar = (jawabanUser[i] === soal.jawabanBenar);
+                let warnaClass = statusBenar ? 'review-benar' : 'review-salah';
+                
+                if (i === indeksReviewSekarang) {
+                    warnaClass += ' review-aktif'; // Kotak yang sedang diklik/dilihat pembahasannya
+                }
+
+                reviewGrid.innerHTML += `
+                    <button class="nav-btn ${warnaClass}" onclick="pindahReviewNomor(${i})">${i + 1}</button>
+                `;
+            });
+        }
+
+        // Render Lembar Detail Pertanyaan, Jawaban User, Kunci, dan Kolom Pembahasan (Dinamis)
+        function renderDetailKontenReview() {
+            const soal = bankSoalAktif[indeksReviewSekarang];
+            const indexJawabanUser = jawabanUser[indeksReviewSekarang];
+            const statusBenar = (indexJawabanUser === soal.jawabanBenar);
+
+            // Update Tajuk No & Badge Status
+            document.getElementById('review-question-number').textContent = `Review Soal Nomor ${indeksReviewSekarang + 1}`;
+            document.getElementById('review-question-tags').innerHTML = `
+                <span class="tag-stase">📂 ${soal.stase}</span>
+                <span class="tag-paket">📦 Paket ${soal.paket}</span>
+                <span class="tag-sub">🏷️ ${soal.submateri}</span>
+            `;
+
+            const badgeBox = document.getElementById('review-status-badge');
+            if (statusBenar) {
+                badgeBox.innerHTML = `<span class="badge-status badge-benar">✅ Benar</span>`;
+            } else {
+                badgeBox.innerHTML = `<span class="badge-status badge-salah">❌ Salah / Kosong</span>`;
+            }
+
+            // Update Isi Teks Soal
+            document.getElementById('review-question-text').textContent = soal.pertanyaan;
+
+            // Update Keterangan Pilihan Jawaban
+            const teksUser = indexJawabanUser !== null ? soal.pilihan[indexJawabanUser] : 'Tidak Menjawab (Kosong)';
+            const teksKunci = soal.pilihan[soal.jawabanBenar];
+
+            document.getElementById('review-user-answer').innerHTML = statusBenar 
+                ? `<span style="color:#059669;">${teksUser}</span>` 
+                : `<span style="color:#dc2626;">${teksUser}</span>`;
+            document.getElementById('review-correct-answer').textContent = teksKunci;
+
+            // Update Kolom Pembahasan & Materi Esensial
+            document.getElementById('review-pembahasan-text').textContent = soal.pembahasan;
+        }
+
+        // Fungsi Aksi Klik Tombol Nomor Angka di Halaman Review
+        function pindahReviewNomor(indeksTarget) {
+            indeksReviewSekarang = indeksTarget;
+            renderPanelNavigasiReview();
+            renderDetailKontenReview();
+        }
+
+        document.getElementById('btn-start').addEventListener('click', startQuiz);
+        document.getElementById('btn-prev').addEventListener('click', () => { if(indeksSoalSekarang > 0) { indeksSoalSekarang--; renderSoal(); renderNavigasi(); } });
+        document.getElementById('btn-next').addEventListener('click', () => {
+            if(indeksSoalSekarang < bankSoalAktif.length - 1) { indeksSoalSekarang++; renderSoal(); renderNavigasi(); } 
+            else { if(confirm("Selesai ujian?")) finishQuiz(); }
+        });
+        document.getElementById('btn-submit').addEventListener('click', () => { if(confirm("Akhiri ujian sekarang?")) finishQuiz(); });
+    </script>
+</body>
+</html>
