@@ -254,7 +254,7 @@
 
     <script>
         // ===================================================
-        // ⚙️ KONFIGURASI OTOMATIS FIREBASE REALTIME CLOUD
+        // ⚙️ SINKRONISASI KONFIGURASI FIREBASE CLOUD DATABASE
         // ===================================================
         const firebaseConfig = {
             apiKey: "AIzaSyA0JdQgSfXqf5ATyr_sj0fG5H4JzWx2uYQ", 
@@ -264,17 +264,16 @@
             storageBucket: "to-gemini-dank-rii.firebasestorage.app"
         };
 
-        // Inisialisasi Firebase App
+        // Menyalakan Mesin Database Cloud
         firebase.initializeApp(firebaseConfig);
         const database = firebase.database();
 
-        let masterBankSoal = []; // Diisi otomatis secara real-time dari Firebase cloud
+        let masterBankSoal = []; 
         let bankSoalAktif = []; 
 
         let waktuTersisa = 0; let totalWaktu = 0; let intervalTimer = null;
         let indeksSoalSekarang = 0; let jawabanUser = []; let indeksReviewSekarang = 0;
 
-        // DOM Elements
         const screenStart = document.getElementById('start-screen');
         const screenAdmin = document.getElementById('admin-screen');
         const screenQuiz = document.getElementById('quiz-screen');
@@ -287,22 +286,19 @@
         const btnStart = document.getElementById('btn-start');
         const totalSoalInfo = document.getElementById('total-soal-info');
 
-        // SINKRONISASI DATA REAL-TIME DARI CLOUD DATABASE
+        // MENGUNDUH DATA SOAL SECARA SINKRON DARI DATABASE
         database.ref('bank_soal').on('value', (snapshot) => {
             const data = snapshot.val();
             masterBankSoal = [];
-            
             if (data) {
-                // Konversi objek database Firebase menjadi array Javascript
                 Object.keys(data).forEach(key => {
                     masterBankSoal.push(data[key]);
                 });
             }
-            
             hitungKetersediaanSoal();
         }, (error) => {
             console.error("Gagal sinkronisasi cloud database:", error);
-            totalSoalInfo.textContent = "Gagal terhubung ke Cloud Database. Cek Rules Firebase Anda.";
+            totalSoalInfo.textContent = "Gagal terhubung ke Cloud Database. Periksa konfigurasi Rules Firebase.";
         });
 
         function hitungKetersediaanSoal() {
@@ -319,7 +315,7 @@
                 totalSoalInfo.innerHTML = `🟢 Cloud Terkoneksi: <span style="color:#2563eb; font-size:1.05rem;">${bankSoalAktif.length} Soal</span> sinkron dan siap diuji.`;
                 btnStart.disabled = false;
             } else {
-                totalSoalInfo.innerHTML = `❌ <span style="color:#dc2626">0 Soal ditemukan</span>. Silakan isi soal lewat menu admin di laptop Anda.`;
+                totalSoalInfo.innerHTML = `❌ <span style="color:#dc2626">0 Soal ditemukan</span>. Silakan masuk ke menu admin untuk menginput soal.`;
                 btnStart.disabled = true;
             }
         }
@@ -335,7 +331,6 @@
             hitungKetersediaanSoal();
         }
 
-        // PARSER CORE ENGINE
         function parseTeksMenjadiObjek(rawText) {
             const blokSoalRaw = rawText.split(/(?=STASE:)/i);
             let hasilArrayObjek = [];
@@ -427,7 +422,7 @@
             previewCountLabel.textContent = daftarSoalTerurai.length;
 
             if (daftarSoalTerurai.length === 0) {
-                previewBox.innerHTML = `<p style="color:#dc2626; text-align:center; margin-top:100px; font-size:0.85rem; font-weight:bold;">⚠️ Format belum terbaca lengkap. Cek teks penanda.</p>`;
+                previewBox.innerHTML = `<p style="color:#dc2626; text-align:center; margin-top:100px; font-size:0.85rem; font-weight:bold;">⚠️ Format belum terbaca lengkap. Cek kembali penulisan parameter.</p>`;
                 return;
             }
 
@@ -449,7 +444,6 @@
             });
         }
 
-        // AKSI KIRIM SOAL LANGSUNG SYNC KE CLOUD FIREBASE
         function prosesBulkInputSoal(e) {
             e.preventDefault();
             const rawText = document.getElementById('in-raw-text').value;
@@ -460,7 +454,6 @@
                 btnSave.disabled = true;
                 btnSave.textContent = "Uploading ke Cloud...";
 
-                // Push satu per satu larik objek soal ke node Firebase 'bank_soal'
                 let prosesUpload = daftarSoalTerurai.map(soal => {
                     return database.ref('bank_soal').push(soal);
                 });
@@ -472,13 +465,13 @@
                     btnSave.textContent = "Upload ke Cloud Database";
                     kembaliKeUtama();
                 }).catch(err => {
-                    alert("Gagal mengunggah ke Cloud. Cek koneksi atau Firebase Security Rules!");
+                    alert("Gagal mengunggah ke Cloud. Periksa koneksi internet atau Firebase Security Rules Anda!");
                     console.error(err);
                     btnSave.disabled = false;
                     btnSave.textContent = "Upload ke Cloud Database";
                 });
             } else {
-                alert("Gagal memproses penginputan. Cek format penanda kuis Anda.");
+                alert("Gagal memproses penginputan. Periksa keselarasan format teks.");
             }
         }
 
@@ -491,7 +484,6 @@
             }
         }
 
-        // PLAYING KUIS ENGINE
         function startQuiz() {
             screenStart.classList.add('hidden'); btnGotoAdmin.classList.add('hidden');
             screenQuiz.classList.remove('hidden'); timerContainer.style.display = 'block';
@@ -546,7 +538,6 @@
         function simpanJawaban(idx) { jawabanUser[indeksSoalSekarang] = idx; renderNavigasi(); }
         function lompat(idx) { indeksSoalSekarang = idx; renderSoal(); renderNavigasi(); }
 
-        // INTERACTIVE REVIEW ENGINE
         function finishQuiz() {
             clearInterval(intervalTimer);
             screenQuiz.classList.add('hidden'); timerContainer.classList.add('hidden'); screenResult.classList.remove('hidden');
@@ -598,7 +589,7 @@
         function renderPanelNavigasiReview() {
             const reviewGrid = document.getElementById('review-nav-grid'); reviewGrid.innerHTML = '';
             bankSoalAktif.forEach((soal, i) => {
-                const statusBenar = (jawabanUser[i] === soal.jawabanBenar);
+                const statusBenar = (jawabanUser[i] === soar.jawabanBenar || jawabanUser[i] === soal.jawabanBenar);
                 let warnaClass = statusBenar ? 'review-benar' : 'review-salah';
                 if (i === indeksReviewSekarang) warnaClass += ' review-aktif';
                 reviewGrid.innerHTML += `<button class="nav-btn ${warnaClass}" onclick="pindahReviewNomor(${i})">${i + 1}</button>`;
