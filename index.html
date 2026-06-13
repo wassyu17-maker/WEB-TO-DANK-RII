@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Smart Tryout UKMPPD - Interactive Review</title>
+    <title>Smart Tryout UKMPPD - Cloud Realtime Engine</title>
     <style>
         * { box-sizing: border-box; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
         body { background-color: #f3f4f6; margin: 0; padding: 0; min-height: 100vh; display: flex; flex-direction: column; color: #1f2937; }
@@ -20,11 +20,9 @@
         .btn-admin-nav:hover { background: #374151; }
         .hidden { display: none !important; }
         
-        /* Layout Grid 2 Kolom untuk Kuis dan Review */
         .grid-layout { display: grid; grid-template-columns: 3fr 1fr; gap: 20px; }
         @media (max-width: 768px) { .grid-layout { grid-template-columns: 1fr; } }
         
-        /* Layout Admin split 2 kolom */
         .admin-split-layout { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; align-items: start; }
         @media (max-width: 850px) { .admin-split-layout { grid-template-columns: 1fr; } }
         
@@ -32,19 +30,16 @@
         @media (max-width: 480px) { .filter-container { grid-template-columns: 1fr; } }
         .select-main { padding: 12px; border: 2px solid #2563eb; border-radius: 8px; font-size: 0.95rem; width: 100%; font-weight: 600; color: #1e3a8a; background-color: #f8fafc; }
         
-        /* Form Admin Styling */
         .form-group { margin-bottom: 15px; display: flex; flex-direction: column; gap: 5px; text-align: left; }
         .form-group label { font-size: 0.9rem; font-weight: 600; color: #374151; }
         .form-group textarea { padding: 12px; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 0.9rem; width: 100%; resize: vertical; min-height: 380px; font-family: monospace; line-height: 1.5; }
         .format-hint { background: #f8fafc; border: 1px dashed #cbd5e1; padding: 12px; border-radius: 8px; font-size: 0.75rem; color: #4b5563; text-align: left; margin-bottom: 15px; }
         
-        /* Live Preview Container */
         .preview-box-container { border: 1px solid #cbd5e1; border-radius: 8px; background: #fafafa; padding: 15px; min-height: 380px; max-height: 500px; overflow-y: auto; text-align: left; }
         .preview-item { background: white; border: 1px solid #e5e7eb; padding: 15px; border-radius: 10px; margin-bottom: 15px; box-shadow: 0 2px 4px rgba(0,0,0,0.02); }
         
-        /* Opsi Jawaban Kuis */
         .opsi-container { display: flex; flex-direction: column; gap: 12px; margin-top: 20px; }
-        .opsi-item { border: 1px solid #e5e7eb; padding: 14px; border-radius: 10px; cursor: pointer; display: flex; items-center; font-weight: 500; text-align: left; }
+        .opsi-item { border: 1px solid #e5e7eb; padding: 14px; border-radius: 10px; cursor: pointer; display: flex; align-items: center; font-weight: 500; text-align: left; }
         .opsi-item:hover { background: #f8fafc; border-color: #cbd5e1; }
         .opsi-item input { margin-right: 12px; transform: scale(1.2); }
         .btn-flex { display: flex; justify-content: space-between; margin-top: 20px; gap: 15px; }
@@ -54,18 +49,15 @@
         .btn-finish { background: #059669; }
         .btn-finish:hover { background: #047857; }
         
-        /* Grid Navigasi Nomor */
         .nav-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
         .nav-btn { background: #f3f4f6; border: 1px solid #e5e7eb; height: 40px; font-weight: bold; border-radius: 8px; cursor: pointer; }
         .nav-btn.terisi { background: #2563eb; color: white; border-color: #2563eb; }
         .nav-btn.aktif { border: 3px solid #1e3a8a; }
         
-        /* Navigasi Khusus Halaman Review (Hasil) */
         .nav-btn.review-benar { background: #10b981; color: white; border-color: #10b981; }
         .nav-btn.review-salah { background: #ef4444; color: white; border-color: #ef4444; }
-        .nav-btn.review-aktif { border: 3px solid #000000; ring: 2px solid black; }
+        .nav-btn.review-aktif { border: 3px solid #000000; }
         
-        /* Badges & Tags */
         .badge-status { display: inline-block; padding: 4px 12px; font-size: 0.75rem; font-weight: bold; border-radius: 50px; }
         .badge-benar { background: #d1fae5; color: #065f46; }
         .badge-salah { background: #fee2e2; color: #991b1b; }
@@ -73,14 +65,15 @@
         .tag-paket { display: inline-block; background: #fef3c7; color: #92400e; border: 1px solid #fde68a; font-size: 0.7rem; padding: 2px 6px; border-radius: 4px; font-weight: 600; margin-left: 3px; }
         .tag-sub { display: inline-block; background: #f3f4f6; color: #4b5563; border: 1px solid #e5e7eb; font-size: 0.7rem; padding: 2px 6px; border-radius: 4px; font-weight: 500; margin-left: 3px; }
         
-        /* Tampilan Kotak Informasi Hasil */
         .info-box-review { border: 1px solid #e5e7eb; padding: 12px; border-radius: 8px; font-size: 0.85rem; margin-bottom: 10px; text-align: left; }
-        
         .pembahasan-box { background: #eff6ff; border-left: 4px solid #3b82f6; padding: 15px; margin-top: 15px; border-radius: 4px; font-size: 0.9rem; text-align: left; }
         .rekap-table { width: 100%; border-collapse: collapse; margin-top: 15px; text-align: left; font-size: 0.9rem; }
         .rekap-table th, .rekap-table td { padding: 12px; border-bottom: 1px solid #e5e7eb; }
         .rekap-table th { background-color: #f8fafc; color: #4b5563; }
     </style>
+
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
 </head>
 <body>
 
@@ -138,16 +131,16 @@
                 </div>
             </div>
 
-            <p style="font-weight: bold; font-size: 0.9rem; margin-bottom: 25px;" id="total-soal-info">Loading soal...</p>
-            <button id="btn-start" class="btn">Mulai Ujian</button>
+            <p style="font-weight: bold; font-size: 0.9rem; margin-bottom: 25px;" id="total-soal-info">Menghubungkan ke Cloud Database...</p>
+            <button id="btn-start" class="btn" disabled>Mulai Ujian</button>
         </div>
 
         <div id="admin-screen" class="card hidden" style="max-width: 1000px; margin: 0 auto;">
-            <h3 style="margin-top:0; border-bottom: 1px solid #e5e7eb; padding-bottom: 10px;">⚡ Bulk Input Soal & Live Preview Analyzer</h3>
+            <h3 style="margin-top:0; border-bottom: 1px solid #e5e7eb; padding-bottom: 10px;">⚡ Bulk Input Soal & Cloud Database Sync</h3>
             <div class="admin-split-layout">
                 <div>
                     <div class="format-hint">
-                        <strong>Format Penanda wajib:</strong> <code>STASE:</code>, <code>PAKET:</code>, <code>SUB:</code>, <code>SOAL:</code>, <code>A.</code>, <code>B.</code>, <code>C.</code>, <code>D.</code>, <code>KUNCI:</code>, <code>PEMBAHASAN:</code>
+                        <strong>Format Penanda wajib:</strong> <code>STASE:</code>, <code>PAKET:</code>, <code>SUB:</code>, <code>SOAL:</code>, <code>A.</code>, <code>B.</code>, <code>C.</code>, <code>D.</code> (atau <code>E.</code>), <code>KUNCI:</code>, <code>PEMBAHASAN:</code>
                     </div>
                     <form id="form-tambah-soal" onsubmit="prosesBulkInputSoal(event)">
                         <div class="form-group">
@@ -156,15 +149,15 @@
                         </div>
                         <div class="btn-flex">
                             <button type="button" onclick="kembaliKeUtama()" class="btn btn-secondary" style="width: 45%;">Batal</button>
-                            <button type="submit" class="btn btn-finish" style="width: 55%;">Simpan Semua Soal</button>
+                            <button type="submit" id="btn-cloud-save" class="btn btn-finish" style="width: 55%;">Upload ke Cloud Database</button>
                         </div>
                     </form>
-                    <button onclick="resetKeDefault()" class="btn" style="background:#dc2626; padding: 8px; font-size: 0.8rem; width: auto; margin-top: 20px;">Hapus Semua Soal Custom</button>
+                    <button onclick="clearCloudDatabase()" class="btn" style="background:#dc2626; padding: 8px; font-size: 0.8rem; width: auto; margin-top: 20px;">Hapus Seluruh Database Cloud</button>
                 </div>
                 <div>
                     <label style="font-size: 0.9rem; font-weight: 600; color: #374151; display: block; margin-bottom: 5px; text-align: left;">👀 Live Preview Parser (<span id="preview-count-label">0</span> Soal Terdeteksi):</label>
                     <div id="live-preview-box" class="preview-box-container">
-                        <p style="color:#9ca3af; text-align:center; margin-top:100px; font-size:0.9rem;">Belum ada teks. Ketik sesuatu di kolom kiri...</p>
+                        <p style="color:#9ca3af; text-align:center; margin-top:100px; font-size:0.9rem;">Belum ada teks. Ketik sesuatu...</p>
                     </div>
                 </div>
             </div>
@@ -227,7 +220,6 @@
 
             <div class="card">
                 <h3 style="margin-top: 0; border-bottom: 1px solid #e5e7eb; padding-bottom: 10px; text-align: left;">🔍 Review Pembahasan Per Nomor Soal</h3>
-                
                 <div class="grid-layout" style="margin-top: 20px;">
                     <div style="background: #f8fafc; border: 1px solid #e5e7eb; padding: 20px; border-radius: 12px;">
                         <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #e5e7eb; padding-bottom: 8px; margin-bottom: 15px;">
@@ -237,24 +229,19 @@
                             </div>
                             <div id="review-status-badge"></div>
                         </div>
-                        
                         <p id="review-question-text" style="line-height: 1.6; font-weight: 500; text-align: left; white-space: pre-wrap; margin-bottom: 20px;">Teks soal...</p>
-                        
                         <div class="info-box-review" style="background: #fff;">
                             <p style="margin: 4px 0; color:#4b5563;">👉 Jawaban Anda: <span id="review-user-answer" style="font-weight: bold;">-</span></p>
                             <p style="margin: 4px 0; color:#059669;">🎯 Kunci Jawaban: <span id="review-correct-answer" style="font-weight: bold;">-</span></p>
                         </div>
-                        
                         <div id="review-pembahasan-box" class="pembahasan-box">
                             <b>📖 Pembahasan Kunci:</b><br>
                             <p id="review-pembahasan-text" style="margin: 5px 0; white-space: pre-wrap;"></p>
                         </div>
                     </div>
-
                     <div style="text-align: center;">
                         <h4 style="margin-top: 0; margin-bottom: 10px; font-size: 0.8rem; color:#6b7280; text-transform: uppercase;">Daftar Soal</h4>
-                        <div id="review-nav-grid" class="nav-grid">
-                            </div>
+                        <div id="review-nav-grid" class="nav-grid"></div>
                     </div>
                 </div>
             </div>
@@ -262,32 +249,32 @@
     </main>
 
     <footer style="text-align: center; padding: 20px; color: #9ca3af; font-size: 0.8rem; background: white; margin-top: auto; border-top: 1px solid #e5e7eb;">
-        &copy; 2026 Smart Tryout App - UKMPPD Engine.
+        &copy; 2026 Smart Tryout App - UKMPPD Realtime Engine.
     </footer>
 
     <script>
-        const soalDefault = [
-            {
-                stase: "BEDAH", paket: 1, submateri: "Urologi Obstruktif",
-                pertanyaan: "Manakah organ tubuh manusia yang berfungsi utama untuk menyaring darah dari zat sisa metabolisme?",
-                pilihan: ["A. Jantung", "B. Paru-paru", "C. Ginjal", "D. Hati"], jawabanBenar: 2,
-                pembahasan: "Ginjal berfungsi menyaring darah, membuang limbah metabolik, serta mengatur keseimbangan cairan tubuh."
-            },
-            {
-                stase: "KARDIOLOGI", paket: 1, submateri: "Sindrom Koroner Akut",
-                pertanyaan: "Seorang pasien datang dengan keluhan nyeri dada kiri menjalar ke lengan kiri. Pada pemeriksaan EKG ditemukan ST Elevasi di lead II, III, aVF. Manakah diagnosis yang tepat?",
-                pilihan: ["A. STEMI Anteroseptal", "B. STEMI Inferior", "C. LBBB Baru", "D. Angina Pektoris Stabil"], jawabanBenar: 1,
-                pembahasan: "ST elevasi pada lead II, III, dan aVF menunjukkan adanya infark miokard akut dinding inferior."
-            }
-        ];
+        // ===================================================
+        // ⚙️ KONFIGURASI OTOMATIS FIREBASE REALTIME CLOUD
+        // ===================================================
+        const firebaseConfig = {
+            apiKey: "AIzaSyFakeKey_SilakanMasukkanApiKeyAsliJikaAda", 
+            authDomain: "to-gemini-dank-rii.firebaseapp.com",
+            databaseURL: "https://to-gemini-dank-rii-default-rtdb.firebaseio.com",
+            projectId: "to-gemini-dank-rii",
+            storageBucket: "to-gemini-dank-rii.appspot.com"
+        };
 
-        let masterBankSoal = JSON.parse(localStorage.getItem('ukmppd_bank_soal')) || soalDefault;
+        // Inisialisasi Firebase App
+        firebase.initializeApp(firebaseConfig);
+        const database = firebase.database();
+
+        let masterBankSoal = []; // Diisi otomatis secara real-time dari Firebase cloud
         let bankSoalAktif = []; 
 
         let waktuTersisa = 0; let totalWaktu = 0; let intervalTimer = null;
-        let indeksSoalSekarang = 0; let jawabanUser = [];
-        let indeksReviewSekarang = 0; // State baru untuk melacak nomor berapa yang sedang dibedah pasca kuis
+        let indeksSoalSekarang = 0; let jawabanUser = []; let indeksReviewSekarang = 0;
 
+        // DOM Elements
         const screenStart = document.getElementById('start-screen');
         const screenAdmin = document.getElementById('admin-screen');
         const screenQuiz = document.getElementById('quiz-screen');
@@ -300,6 +287,24 @@
         const btnStart = document.getElementById('btn-start');
         const totalSoalInfo = document.getElementById('total-soal-info');
 
+        // SINKRONISASI DATA REAL-TIME DARI CLOUD DATABASE
+        database.ref('bank_soal').on('value', (snapshot) => {
+            const data = snapshot.val();
+            masterBankSoal = [];
+            
+            if (data) {
+                // Konversi objek database Firebase menjadi array Javascript
+                Object.keys(data).forEach(key => {
+                    masterBankSoal.push(data[key]);
+                });
+            }
+            
+            hitungKetersediaanSoal();
+        }, (error) => {
+            console.error("Gagal sinkronisasi cloud database:", error);
+            totalSoalInfo.textContent = "Gagal terhubung ke Cloud Database. Cek Rules Firebase Anda.";
+        });
+
         function hitungKetersediaanSoal() {
             const staseTerpilih = selectStaseFilter.value;
             const paketTerpilih = selectPaketFilter.value;
@@ -311,14 +316,13 @@
             });
 
             if (bankSoalAktif.length > 0) {
-                totalSoalInfo.innerHTML = `🟢 Terbaca: <span style="color:#2563eb; font-size:1.05rem;">${bankSoalAktif.length} Soal</span> siap dikerjakan pada sesi ini.`;
+                totalSoalInfo.innerHTML = `🟢 Cloud Terkoneksi: <span style="color:#2563eb; font-size:1.05rem;">${bankSoalAktif.length} Soal</span> sinkron dan siap diuji.`;
                 btnStart.disabled = false;
             } else {
-                totalSoalInfo.innerHTML = `❌ <span style="color:#dc2626">0 Soal tersedia</span>. Belum ada input soal untuk kombinasi filter ini.`;
+                totalSoalInfo.innerHTML = `❌ <span style="color:#dc2626">0 Soal ditemukan</span>. Silakan isi soal lewat menu admin di laptop Anda.`;
                 btnStart.disabled = true;
             }
         }
-        hitungKetersediaanSoal();
 
         btnGotoAdmin.addEventListener('click', () => {
             screenStart.classList.add('hidden'); screenQuiz.classList.add('hidden'); screenResult.classList.add('hidden');
@@ -339,9 +343,9 @@
             blokSoalRaw.forEach(blok => {
                 if (!blok.trim()) return;
 
-                let stase = "UMUM"; let paketNo = 1; let submateri = "Lain-lain";
+                let stase = "BEDAH"; let paketNo = 1; let submateri = "Umum";
                 let pertanyaan = ""; let opsiA = "", opsiB = "", opsiC = "", opsiD = "", opsiE = "";
-                let kunciHuruf = "A"; let pembahasan = "Tidak ada pembahasan.";
+                let kunciHuruf = "A"; let pembahasan = "Selesai dianalisis.";
 
                 const lines = blok.split('\n');
                 let captureSoalMode = false; let capturePembahasanMode = false;
@@ -423,7 +427,7 @@
             previewCountLabel.textContent = daftarSoalTerurai.length;
 
             if (daftarSoalTerurai.length === 0) {
-                previewBox.innerHTML = `<p style="color:#dc2626; text-align:center; margin-top:100px; font-size:0.85rem; font-weight:bold;">⚠️ Format tidak dikenali. Cek kriteria penanda teks.</p>`;
+                previewBox.innerHTML = `<p style="color:#dc2626; text-align:center; margin-top:100px; font-size:0.85rem; font-weight:bold;">⚠️ Format belum terbaca lengkap. Cek teks penanda.</p>`;
                 return;
             }
 
@@ -445,25 +449,45 @@
             });
         }
 
+        // AKSI KIRIM SOAL LANGSUNG SYNC KE CLOUD FIREBASE
         function prosesBulkInputSoal(e) {
             e.preventDefault();
             const rawText = document.getElementById('in-raw-text').value;
             const daftarSoalTerurai = parseTeksMenjadiObjek(rawText);
+            const btnSave = document.getElementById('btn-cloud-save');
 
             if (daftarSoalTerurai.length > 0) {
-                masterBankSoal.push(...daftarSoalTerurai);
-                localStorage.setItem('ukmppd_bank_soal', JSON.stringify(masterBankSoal));
-                alert(`🔥 Sukses menyimpan [ ${daftarSoalTerurai.length} Soal ] baru.`);
-                document.getElementById('form-tambah-soal').reset();
-                kembaliKeUtama();
+                btnSave.disabled = true;
+                btnSave.textContent = "Uploading ke Cloud...";
+
+                // Push satu per satu larik objek soal ke node Firebase 'bank_soal'
+                let prosesUpload = daftarSoalTerurai.map(soal => {
+                    return database.ref('bank_soal').push(soal);
+                });
+
+                Promise.all(prosesUpload).then(() => {
+                    alert(`🔥 Sukses Besar! Sebanyak [ ${daftarSoalTerurai.length} Soal ] berhasil di-upload ke Cloud Firebase Database dan langsung tersinkron untuk semua pengguna.`);
+                    document.getElementById('form-tambah-soal').reset();
+                    btnSave.disabled = false;
+                    btnSave.textContent = "Upload ke Cloud Database";
+                    kembaliKeUtama();
+                }).catch(err => {
+                    alert("Gagal mengunggah ke Cloud. Cek koneksi atau Firebase Security Rules!");
+                    console.error(err);
+                    btnSave.disabled = false;
+                    btnSave.textContent = "Upload ke Cloud Database";
+                });
             } else {
-                alert("Gagal memproses penginputan. Periksa keselarasan format teks.");
+                alert("Gagal memproses penginputan. Cek format penanda kuis Anda.");
             }
         }
 
-        function resetKeDefault() {
-            if(confirm("Hapus seluruh database kuis?")) {
-                localStorage.removeItem('ukmppd_bank_soal'); window.location.reload();
+        function clearCloudDatabase() {
+            if(confirm("⚠️ PERINGATAN: Tindakan ini akan menghapus seluruh isi bank soal di Cloud Firebase sehingga web semua orang menjadi kosong. Hapus?")) {
+                database.ref('bank_soal').remove().then(() => {
+                    alert("Seluruh database soal di cloud berhasil dikosongkan.");
+                    window.location.reload();
+                });
             }
         }
 
@@ -522,9 +546,7 @@
         function simpanJawaban(idx) { jawabanUser[indeksSoalSekarang] = idx; renderNavigasi(); }
         function lompat(idx) { indeksSoalSekarang = idx; renderSoal(); renderNavigasi(); }
 
-        // ===================================================
-        // 🏁 LOGIKA TAMPILAN REVIEW INTERAKTIF PER NOMOR SOAL
-        // ===================================================
+        // INTERACTIVE REVIEW ENGINE
         function finishQuiz() {
             clearInterval(intervalTimer);
             screenQuiz.classList.add('hidden'); timerContainer.classList.add('hidden'); screenResult.classList.remove('hidden');
@@ -554,7 +576,6 @@
             let waktuTerpakai = totalWaktu - waktuTersisa;
             document.getElementById('result-time-info').textContent = `Waktu pengerjaan: ${Math.floor(waktuTerpakai/60)}m ${waktuTerpakai%60}s`;
 
-            // Render Tabel Capaian Sub-materi
             const tableBody = document.getElementById('submateri-rekap-body'); tableBody.innerHTML = '';
             for (let key in rekapSubMateri) {
                 let item = rekapSubMateri[key]; let akurasi = Math.round((item.benar / (item.benar + item.salah)) * 100);
@@ -569,69 +590,42 @@
                 `;
             }
 
-            // Pemicu pertama untuk me-render review nomor soal pertama (Indeks 0)
             indeksReviewSekarang = 0;
             renderPanelNavigasiReview();
             renderDetailKontenReview();
         }
 
-        // Render Tombol Angka Khusus di Halaman Review (Hasil Akhir)
         function renderPanelNavigasiReview() {
-            const reviewGrid = document.getElementById('review-nav-grid');
-            reviewGrid.innerHTML = '';
-
+            const reviewGrid = document.getElementById('review-nav-grid'); reviewGrid.innerHTML = '';
             bankSoalAktif.forEach((soal, i) => {
                 const statusBenar = (jawabanUser[i] === soal.jawabanBenar);
                 let warnaClass = statusBenar ? 'review-benar' : 'review-salah';
-                
-                if (i === indeksReviewSekarang) {
-                    warnaClass += ' review-aktif'; // Kotak yang sedang diklik/dilihat pembahasannya
-                }
-
-                reviewGrid.innerHTML += `
-                    <button class="nav-btn ${warnaClass}" onclick="pindahReviewNomor(${i})">${i + 1}</button>
-                `;
+                if (i === indeksReviewSekarang) warnaClass += ' review-aktif';
+                reviewGrid.innerHTML += `<button class="nav-btn ${warnaClass}" onclick="pindahReviewNomor(${i})">${i + 1}</button>`;
             });
         }
 
-        // Render Lembar Detail Pertanyaan, Jawaban User, Kunci, dan Kolom Pembahasan (Dinamis)
         function renderDetailKontenReview() {
             const soal = bankSoalAktif[indeksReviewSekarang];
             const indexJawabanUser = jawabanUser[indeksReviewSekarang];
             const statusBenar = (indexJawabanUser === soal.jawabanBenar);
 
-            // Update Tajuk No & Badge Status
             document.getElementById('review-question-number').textContent = `Review Soal Nomor ${indeksReviewSekarang + 1}`;
-            document.getElementById('review-question-tags').innerHTML = `
-                <span class="tag-stase">📂 ${soal.stase}</span>
-                <span class="tag-paket">📦 Paket ${soal.paket}</span>
-                <span class="tag-sub">🏷️ ${soal.submateri}</span>
-            `;
+            document.getElementById('review-question-tags').innerHTML = `<span class="tag-stase">📂 ${soal.stase}</span><span class="tag-paket">📦 Paket ${soal.paket}</span><span class="tag-sub">🏷️ ${soal.submateri}</span>`;
 
             const badgeBox = document.getElementById('review-status-badge');
-            if (statusBenar) {
-                badgeBox.innerHTML = `<span class="badge-status badge-benar">✅ Benar</span>`;
-            } else {
-                badgeBox.innerHTML = `<span class="badge-status badge-salah">❌ Salah / Kosong</span>`;
-            }
+            badgeBox.innerHTML = statusBenar ? `<span class="badge-status badge-benar">✅ Benar</span>` : `<span class="badge-status badge-salah">❌ Salah / Kosong</span>`;
 
-            // Update Isi Teks Soal
             document.getElementById('review-question-text').textContent = soal.pertanyaan;
 
-            // Update Keterangan Pilihan Jawaban
             const teksUser = indexJawabanUser !== null ? soal.pilihan[indexJawabanUser] : 'Tidak Menjawab (Kosong)';
             const teksKunci = soal.pilihan[soal.jawabanBenar];
 
-            document.getElementById('review-user-answer').innerHTML = statusBenar 
-                ? `<span style="color:#059669;">${teksUser}</span>` 
-                : `<span style="color:#dc2626;">${teksUser}</span>`;
+            document.getElementById('review-user-answer').innerHTML = statusBenar ? `<span style="color:#059669;">${teksUser}</span>` : `<span style="color:#dc2626;">${teksUser}</span>`;
             document.getElementById('review-correct-answer').textContent = teksKunci;
-
-            // Update Kolom Pembahasan & Materi Esensial
             document.getElementById('review-pembahasan-text').textContent = soal.pembahasan;
         }
 
-        // Fungsi Aksi Klik Tombol Nomor Angka di Halaman Review
         function pindahReviewNomor(indeksTarget) {
             indeksReviewSekarang = indeksTarget;
             renderPanelNavigasiReview();
