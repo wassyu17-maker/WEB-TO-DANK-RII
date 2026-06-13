@@ -89,7 +89,12 @@
         <div id="start-screen" class="card" style="text-align: center; max-width: 550px; margin: 0 auto;">
             <div style="font-size: 3rem; margin-bottom: 10px;">📝</div>
             <h2>Simulasi Ujian UKMPPD</h2>
-            <p style="color: #6b7280; margin-bottom: 20px; font-size: 0.9rem;">Tentukan kombinasi Stase dan Paket Soal untuk memulai:</p>
+            <p style="color: #6b7280; margin-bottom: 20px; font-size: 0.9rem;">Isi identitas singkat, lalu tentukan kombinasi Stase dan Paket Soal untuk memulai:</p>
+
+            <div class="form-group" style="margin-bottom: 15px;">
+                <label>Nama / Identitas Peserta:</label>
+                <input id="input-nama-peserta" type="text" placeholder="Contoh: Habib" style="padding:12px; border:1px solid #cbd5e1; border-radius:8px; font-size:0.95rem; width:100%;">
+            </div>
             
             <div class="filter-container">
                 <div style="text-align: left;">
@@ -140,7 +145,7 @@
             <div class="admin-split-layout">
                 <div>
                     <div class="format-hint">
-                        <strong>Format Penanda wajib:</strong> <code>STASE:</code>, <code>PAKET:</code>, <code>SUB:</code>, <code>SOAL:</code>, <code>A.</code>, <code>B.</code>, <code>C.</code>, <code>D.</code> (atau <code>E.</code>), <code>KUNCI:</code>, <code>PEMBAHASAN:</code>
+                        <strong>Format Penanda wajib:</strong> <code>STASE:</code>, <code>SUB MATERI:</code>, <code>PAKET SOAL:</code>, <code>SOAL:</code>, <code>OPSI JAWABAN:</code>, <code>A.</code>-<code>E.</code>, <code>KUNCI JAWABAN:</code>, <code>PEMBAHASAN:</code>. Pisahkan antar soal dengan <code>------</code>
                     </div>
                     <form id="form-tambah-soal" onsubmit="prosesBulkInputSoal(event)">
                         <div class="form-group">
@@ -268,6 +273,12 @@
         firebase.initializeApp(firebaseConfig);
         const database = firebase.database();
 
+        database.ref('.info/connected').on('value', (snap) => {
+            if (snap.val() === false) {
+                console.warn('Firebase belum terhubung. Jika terus gagal, cek databaseURL dan Rules.');
+            }
+        });
+
         let masterBankSoal = []; 
         let bankSoalAktif = []; 
 
@@ -285,6 +296,7 @@
         const selectPaketFilter = document.getElementById('select-paket-filter');
         const btnStart = document.getElementById('btn-start');
         const totalSoalInfo = document.getElementById('total-soal-info');
+        const inputNamaPeserta = document.getElementById('input-nama-peserta');
 
         // MENGUNDUH DATA SOAL SECARA SINKRON DARI DATABASE
         database.ref('bank_soal').on('value', (snapshot) => {
@@ -331,77 +343,107 @@
             hitungKetersediaanSoal();
         }
 
+        function bersihkanLabelAwal(teks, regexLabel) {
+            return teks.replace(regexLabel, "").trim();
+        }
+
+        function ambilHurufKunci(teks) {
+            const cocok = (teks || "").toUpperCase().match(/[A-E]/);
+            return cocok ? cocok[0] : "A";
+        }
+
+        function escapeHTML(value) {
+            return String(value ?? "")
+                .replaceAll("&", "&amp;")
+                .replaceAll("<", "&lt;")
+                .replaceAll(">", "&gt;")
+                .replaceAll('"', "&quot;")
+                .replaceAll("'", "&#039;");
+        }
+
         function parseTeksMenjadiObjek(rawText) {
-            const blokSoalRaw = rawText.split(/(?=STASE:)/i);
+            // Pemisah utama yang kamu pakai: ------
+            // Fallback tetap bisa membaca soal lama yang langsung diawali STASE:
+            let blokSoalRaw = rawText
+                .split(/^\s*-{3,}\s*$/gm)
+                .map(x => x.trim())
+                .filter(Boolean);
+
+            if (blokSoalRaw.length <= 1) {
+                blokSoalRaw = rawText.split(/(?=^\s*STASE\s*:)/gim).map(x => x.trim()).filter(Boolean);
+            }
+
             let hasilArrayObjek = [];
 
             blokSoalRaw.forEach(blok => {
                 if (!blok.trim()) return;
 
-                let stase = "BEDAH"; let paketNo = 1; let submateri = "Umum";
-                let pertanyaan = ""; let opsiA = "", opsiB = "", opsiC = "", opsiD = "", opsiE = "";
-                let kunciHuruf = "A"; let pembahasan = "Selesai dianalisis.";
+                let stase = "UMUM";
+                let paketNo = 1;
+                let submateri = "Umum";
+                let pertanyaan = "";
+                let kunciHuruf = "A";
+                let pembahasan = "";
+                let listPilihan = [];
 
                 const lines = blok.split('\n');
-                let captureSoalMode = false; let capturePembahasanMode = false;
-                let soalBuffer = []; let pembahasanBuffer = [];
+                let mode = "";
+                let soalBuffer = [];
+                let pembahasanBuffer = [];
 
                 lines.forEach(line => {
-                    let trimmed = line.trim();
+                    const trimmed = line.trim();
                     if (!trimmed) return;
 
-                    if (trimmed.toUpperCase().startsWith("STASE:")) {
-                        stase = line.replace(/stase:/i, "").trim().toUpperCase();
-                        captureSoalMode = false; capturePembahasanMode = false;
-                    } else if (trimmed.toUpperCase().startsWith("PAKET:")) {
-                        paketNo = parseInt(line.replace(/paket:/i, "").trim()) || 1;
-                        captureSoalMode = false; capturePembahasanMode = false;
-                    } else if (trimmed.toUpperCase().startsWith("SUB:")) {
-                        submateri = line.replace(/sub:/i, "").trim();
-                        captureSoalMode = false; capturePembahasanMode = false;
-                    } else if (trimmed.toUpperCase().startsWith("SOAL:")) {
-                        soalBuffer.push(line.replace(/soal:/i, "").trim());
-                        captureSoalMode = true; capturePembahasanMode = false;
-                    } else if (trimmed.toUpperCase().startsWith("A.")) {
-                        opsiA = trimmed; captureSoalMode = false; capturePembahasanMode = false;
-                    } else if (trimmed.toUpperCase().startsWith("B.")) {
-                        opsiB = trimmed; captureSoalMode = false; capturePembahasanMode = false;
-                    } else if (trimmed.toUpperCase().startsWith("C.")) {
-                        opsiC = trimmed; captureSoalMode = false; capturePembahasanMode = false;
-                    } else if (trimmed.toUpperCase().startsWith("D.")) {
-                        opsiD = trimmed; captureSoalMode = false; capturePembahasanMode = false;
-                    } else if (trimmed.toUpperCase().startsWith("E.")) {
-                        opsiE = trimmed; captureSoalMode = false; capturePembahasanMode = false;
-                    } else if (trimmed.toUpperCase().startsWith("KUNCI:")) {
-                        kunciHuruf = line.replace(/kunci:/i, "").trim().toUpperCase();
-                        captureSoalMode = false; capturePembahasanMode = false;
-                    } else if (trimmed.toUpperCase().startsWith("PEMBAHASAN:")) {
-                        pembahasanBuffer.push(line.replace(/pembahasan:/i, "").trim());
-                        captureSoalMode = false; capturePembahasanMode = true;
+                    if (/^STASE\s*:/i.test(trimmed)) {
+                        stase = bersihkanLabelAwal(line, /^\s*STASE\s*:/i).toUpperCase() || "UMUM";
+                        mode = "";
+                    } else if (/^(SUB\s*MATERI|SUB)\s*:/i.test(trimmed)) {
+                        submateri = bersihkanLabelAwal(line, /^\s*(SUB\s*MATERI|SUB)\s*:/i) || "Umum";
+                        mode = "";
+                    } else if (/^(PAKET\s*SOAL|PAKET)\s*:/i.test(trimmed)) {
+                        const paketText = bersihkanLabelAwal(line, /^\s*(PAKET\s*SOAL|PAKET)\s*:/i);
+                        const angka = paketText.match(/\d+/);
+                        paketNo = angka ? parseInt(angka[0]) : 1;
+                        mode = "";
+                    } else if (/^SOAL\s*:/i.test(trimmed)) {
+                        const isiSoal = bersihkanLabelAwal(line, /^\s*SOAL\s*:/i);
+                        if (isiSoal) soalBuffer.push(isiSoal);
+                        mode = "SOAL";
+                    } else if (/^OPSI\s*JAWABAN\s*:/i.test(trimmed)) {
+                        mode = "OPSI";
+                    } else if (/^[A-E]\s*[\.)]\s*/i.test(trimmed)) {
+                        listPilihan.push(trimmed.replace(/^([A-E])\s*[\.)]\s*/i, "$1. "));
+                        mode = "OPSI";
+                    } else if (/^(KUNCI\s*JAWABAN|KUNCI)\s*:/i.test(trimmed)) {
+                        kunciHuruf = ambilHurufKunci(bersihkanLabelAwal(line, /^\s*(KUNCI\s*JAWABAN|KUNCI)\s*:/i));
+                        mode = "";
+                    } else if (/^PEMBAHASAN\s*:/i.test(trimmed)) {
+                        const isiPembahasan = bersihkanLabelAwal(line, /^\s*PEMBAHASAN\s*:/i);
+                        if (isiPembahasan) pembahasanBuffer.push(isiPembahasan);
+                        mode = "PEMBAHASAN";
                     } else {
-                        if (captureSoalMode) soalBuffer.push(trimmed);
-                        if (capturePembahasanMode) pembahasanBuffer.push(trimmed);
+                        if (mode === "SOAL") soalBuffer.push(trimmed);
+                        else if (mode === "PEMBAHASAN") pembahasanBuffer.push(trimmed);
                     }
                 });
 
-                pertanyaan = soalBuffer.join("\n");
-                pembahasan = pembahasanBuffer.join("\n");
+                pertanyaan = soalBuffer.join("\n").trim();
+                pembahasan = pembahasanBuffer.join("\n").trim() || "Pembahasan belum diisi.";
 
-                let listPilihan = [];
-                if(opsiA) listPilihan.push(opsiA); if(opsiB) listPilihan.push(opsiB); if(opsiC) listPilihan.push(opsiC);
-                if(opsiD) listPilihan.push(opsiD); if(opsiE) listPilihan.push(opsiE);
+                const jawabanBenarIdx = Math.max(0, ["A", "B", "C", "D", "E"].indexOf(kunciHuruf));
 
-                let jawabanBenarIdx = 0;
-                if (kunciHuruf.includes("B")) jawabanBenarIdx = 1;
-                else if (kunciHuruf.includes("C")) jawabanBenarIdx = 2;
-                else if (kunciHuruf.includes("D")) jawabanBenarIdx = 3;
-                else if (kunciHuruf.includes("E")) jawabanBenarIdx = 4;
-
-                if (pertanyaan && opsiA && opsiB) {
+                if (pertanyaan && listPilihan.length >= 2) {
                     hasilArrayObjek.push({
-                        stase: stase, paket: paketNo, submateri: submateri,
-                        pertanyaan: pertanyaan, pilihan: listPilihan,
-                        jawabanBenar: jawabanBenarIdx, kunciHuruf: kunciHuruf, pembahasan: pembahasan
+                        stase: stase,
+                        paket: paketNo,
+                        submateri: submateri,
+                        pertanyaan: pertanyaan,
+                        pilihan: listPilihan,
+                        jawabanBenar: jawabanBenarIdx,
+                        kunciHuruf: kunciHuruf,
+                        pembahasan: pembahasan,
+                        createdAt: new Date().toISOString()
                     });
                 }
             });
@@ -431,47 +473,51 @@
                 let opsiHtml = '';
                 soal.pilihan.forEach((opsi, i) => {
                     let isCorrectStyle = (i === soal.jawabanBenar) ? 'color:#059669; font-weight:bold; background:#f0fdf4; padding:2px 6px; border-radius:4px;' : '';
-                    opsiHtml += `<p style="margin:4px 0; font-size:0.85rem; ${isCorrectStyle}">${opsi}</p>`;
+                    opsiHtml += `<p style="margin:4px 0; font-size:0.85rem; ${isCorrectStyle}">${escapeHTML(opsi)}</p>`;
                 });
 
                 previewBox.innerHTML += `
                     <div class="preview-item">
-                        <div style="margin-bottom:6px;"><span class="tag-stase">📂 ${soal.stase}</span><span class="tag-paket">📦 Paket ${soal.paket}</span><span class="tag-sub">🏷️ ${soal.submateri}</span></div>
-                        <p style="font-weight:600; font-size:0.9rem; margin:5px 0; white-space: pre-wrap;">${index + 1}. ${soal.pertanyaan}</p>
+                        <div style="margin-bottom:6px;"><span class="tag-stase">📂 ${escapeHTML(soal.stase)}</span><span class="tag-paket">📦 Paket ${escapeHTML(soal.paket)}</span><span class="tag-sub">🏷️ ${escapeHTML(soal.submateri)}</span></div>
+                        <p style="font-weight:600; font-size:0.9rem; margin:5px 0; white-space: pre-wrap;">${index + 1}. ${escapeHTML(soal.pertanyaan)}</p>
                         <div style="margin-left:10px; border-left:2px solid #e5e7eb; padding-left:8px;">${opsiHtml}</div>
                     </div>
                 `;
             });
         }
 
-        function prosesBulkInputSoal(e) {
+        async function prosesBulkInputSoal(e) {
             e.preventDefault();
             const rawText = document.getElementById('in-raw-text').value;
             const daftarSoalTerurai = parseTeksMenjadiObjek(rawText);
             const btnSave = document.getElementById('btn-cloud-save');
 
-            if (daftarSoalTerurai.length > 0) {
-                btnSave.disabled = true;
-                btnSave.textContent = "Uploading ke Cloud...";
+            if (daftarSoalTerurai.length === 0) {
+                alert("Gagal memproses input. Pastikan antar soal dipisah ------ dan label memakai STASE, SUB MATERI, PAKET SOAL, SOAL, OPSI JAWABAN, KUNCI JAWABAN, PEMBAHASAN.");
+                return;
+            }
 
-                let prosesUpload = daftarSoalTerurai.map(soal => {
-                    return database.ref('bank_soal').push(soal);
+            btnSave.disabled = true;
+            btnSave.textContent = "Uploading ke Cloud...";
+
+            try {
+                const updates = {};
+                daftarSoalTerurai.forEach(soal => {
+                    const newKey = database.ref('bank_soal').push().key;
+                    updates[`bank_soal/${newKey}`] = soal;
                 });
 
-                Promise.all(prosesUpload).then(() => {
-                    alert(`🔥 Sukses Besar! Sebanyak [ ${daftarSoalTerurai.length} Soal ] berhasil di-upload ke Cloud Firebase Database dan langsung tersinkron untuk semua pengguna.`);
-                    document.getElementById('form-tambah-soal').reset();
-                    btnSave.disabled = false;
-                    btnSave.textContent = "Upload ke Cloud Database";
-                    kembaliKeUtama();
-                }).catch(err => {
-                    alert("Gagal mengunggah ke Cloud. Periksa koneksi internet atau Firebase Security Rules Anda!");
-                    console.error(err);
-                    btnSave.disabled = false;
-                    btnSave.textContent = "Upload ke Cloud Database";
-                });
-            } else {
-                alert("Gagal memproses penginputan. Periksa keselarasan format teks.");
+                await database.ref().update(updates);
+                alert(`Berhasil. ${daftarSoalTerurai.length} soal sudah di-upload ke Firebase.`);
+                document.getElementById('form-tambah-soal').reset();
+                jalankanLivePreview();
+                kembaliKeUtama();
+            } catch (err) {
+                console.error("Firebase upload error:", err);
+                alert(`Gagal upload ke Firebase: ${err.message || err}. Cek Realtime Database URL dan Rules.`);
+            } finally {
+                btnSave.disabled = false;
+                btnSave.textContent = "Upload ke Cloud Database";
             }
         }
 
@@ -480,34 +526,53 @@
                 database.ref('bank_soal').remove().then(() => {
                     alert("Seluruh database soal di cloud berhasil dikosongkan.");
                     window.location.reload();
+                }).catch(err => {
+                    console.error("Gagal hapus database:", err);
+                    alert(`Gagal menghapus database: ${err.message || err}`);
                 });
             }
         }
 
         function startQuiz() {
+            const namaPeserta = (inputNamaPeserta.value || "").trim();
+            if (!namaPeserta) {
+                alert("Isi nama / identitas peserta dulu agar hasil tryout bisa disimpan.");
+                inputNamaPeserta.focus();
+                return;
+            }
+
             screenStart.classList.add('hidden'); btnGotoAdmin.classList.add('hidden');
             screenQuiz.classList.remove('hidden'); timerContainer.style.display = 'block';
+            timerContainer.classList.remove('hidden');
             totalWaktu = bankSoalAktif.length * 60; waktuTersisa = totalWaktu;
             jawabanUser = Array(bankSoalAktif.length).fill(null); indeksSoalSekarang = 0;
             renderSoal(); renderNavigasi(); startTimer();
         }
 
         function startTimer() {
+            if (intervalTimer) clearInterval(intervalTimer);
+            updateTimerDisplay();
             intervalTimer = setInterval(() => {
-                if (waktuTersisa <= 0) { clearInterval(intervalTimer); finishQuiz(); } 
-                else {
+                if (waktuTersisa <= 0) {
+                    clearInterval(intervalTimer);
+                    finishQuiz();
+                } else {
                     waktuTersisa--;
-                    let m = Math.floor(waktuTersisa / 60).toString().padStart(2, '0');
-                    let s = (waktuTersisa % 60).toString().padStart(2, '0');
-                    timerEl.textContent = `${m}:${s}`;
+                    updateTimerDisplay();
                 }
             }, 1000);
+        }
+
+        function updateTimerDisplay() {
+            let m = Math.floor(waktuTersisa / 60).toString().padStart(2, '0');
+            let s = (waktuTersisa % 60).toString().padStart(2, '0');
+            timerEl.textContent = `${m}:${s}`;
         }
 
         function renderSoal() {
             const soal = bankSoalAktif[indeksSoalSekarang];
             document.getElementById('question-number-title').textContent = `Soal Nomor ${indeksSoalSekarang + 1}`;
-            document.getElementById('question-tags').innerHTML = `<span class="tag-stase">📂 ${soal.stase}</span><span class="tag-paket">📦 Paket ${soal.paket}</span><span class="tag-sub">🏷️ ${soal.submateri}</span>`;
+            document.getElementById('question-tags').innerHTML = `<span class="tag-stase">📂 ${escapeHTML(soal.stase)}</span><span class="tag-paket">📦 Paket ${escapeHTML(soal.paket)}</span>`;
             document.getElementById('question-count').textContent = `${indeksSoalSekarang + 1} dari ${bankSoalAktif.length}`;
             document.getElementById('question-text').textContent = soal.pertanyaan;
 
@@ -517,7 +582,7 @@
                 containerOpsi.innerHTML += `
                     <label class="opsi-item">
                         <input type="radio" name="jawaban" value="${index}" ${checked} onclick="simpanJawaban(${index})">
-                        ${opsi}
+                        ${escapeHTML(opsi)}
                     </label>
                 `;
             });
@@ -581,15 +646,34 @@
                 `;
             }
 
+            simpanHasilTryoutKeFirebase({
+                nama: (inputNamaPeserta.value || "").trim(),
+                stase: staseTxt,
+                paket: paketTxt,
+                totalSoal: bankSoalAktif.length,
+                benar: benar,
+                salah: bankSoalAktif.length - benar,
+                skor: Math.round((benar/bankSoalAktif.length)*100),
+                waktuTerpakaiDetik: waktuTerpakai,
+                rekapSubMateri: rekapSubMateri,
+                selesaiPada: new Date().toISOString()
+            });
+
             indeksReviewSekarang = 0;
             renderPanelNavigasiReview();
             renderDetailKontenReview();
         }
 
+        function simpanHasilTryoutKeFirebase(payload) {
+            database.ref('hasil_tryout').push(payload).catch(err => {
+                console.error("Gagal menyimpan hasil tryout:", err);
+            });
+        }
+
         function renderPanelNavigasiReview() {
             const reviewGrid = document.getElementById('review-nav-grid'); reviewGrid.innerHTML = '';
             bankSoalAktif.forEach((soal, i) => {
-                const statusBenar = (jawabanUser[i] === soar.jawabanBenar || jawabanUser[i] === soal.jawabanBenar);
+                const statusBenar = (jawabanUser[i] === soal.jawabanBenar);
                 let warnaClass = statusBenar ? 'review-benar' : 'review-salah';
                 if (i === indeksReviewSekarang) warnaClass += ' review-aktif';
                 reviewGrid.innerHTML += `<button class="nav-btn ${warnaClass}" onclick="pindahReviewNomor(${i})">${i + 1}</button>`;
@@ -602,7 +686,7 @@
             const statusBenar = (indexJawabanUser === soal.jawabanBenar);
 
             document.getElementById('review-question-number').textContent = `Review Soal Nomor ${indeksReviewSekarang + 1}`;
-            document.getElementById('review-question-tags').innerHTML = `<span class="tag-stase">📂 ${soal.stase}</span><span class="tag-paket">📦 Paket ${soal.paket}</span><span class="tag-sub">🏷️ ${soal.submateri}</span>`;
+            document.getElementById('review-question-tags').innerHTML = `<span class="tag-stase">📂 ${escapeHTML(soal.stase)}</span><span class="tag-paket">📦 Paket ${escapeHTML(soal.paket)}</span><span class="tag-sub">🏷️ ${escapeHTML(soal.submateri)}</span>`;
 
             const badgeBox = document.getElementById('review-status-badge');
             badgeBox.innerHTML = statusBenar ? `<span class="badge-status badge-benar">✅ Benar</span>` : `<span class="badge-status badge-salah">❌ Salah / Kosong</span>`;
@@ -612,7 +696,7 @@
             const teksUser = indexJawabanUser !== null ? soal.pilihan[indexJawabanUser] : 'Tidak Menjawab (Kosong)';
             const teksKunci = soal.pilihan[soal.jawabanBenar];
 
-            document.getElementById('review-user-answer').innerHTML = statusBenar ? `<span style="color:#059669;">${teksUser}</span>` : `<span style="color:#dc2626;">${teksUser}</span>`;
+            document.getElementById('review-user-answer').innerHTML = statusBenar ? `<span style="color:#059669;">${escapeHTML(teksUser)}</span>` : `<span style="color:#dc2626;">${escapeHTML(teksUser)}</span>`;
             document.getElementById('review-correct-answer').textContent = teksKunci;
             document.getElementById('review-pembahasan-text').textContent = soal.pembahasan;
         }
